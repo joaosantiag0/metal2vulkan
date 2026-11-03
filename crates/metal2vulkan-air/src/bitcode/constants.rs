@@ -166,6 +166,45 @@ fn record(
             ty,
             elems: copy(s.ops(), m)?,
         }),
+        // `[function type id, flags, len(text), text…, len(constraints), constraints…]` (LLVM's
+        // `BitcodeWriter::writeConstants`). The empty form is the optimization barrier AIR emits;
+        // every other form is refused, as it was before the record was decoded.
+        CST_INLINEASM => {
+            let ops = s.ops();
+            let fn_ty = *ops.first().ok_or_else(bad)?;
+            bc_types
+                .ty(fn_ty)
+                .ok_or_else(|| s.err(BitcodeError::BadType))?;
+            let flags = u8::try_from(*ops.get(1).ok_or_else(bad)?).map_err(|_| bad())?;
+            let mut at = 2;
+            let string = |at: &mut usize| -> Result<Box<str>, Error> {
+                let len = *ops.get(*at).ok_or_else(bad)?;
+                *at += 1;
+                let len = usize::try_from(len).map_err(|_| bad())?;
+                let bytes = ops.get(*at..*at + len).ok_or_else(bad)?;
+                *at += len;
+                let mut out = Vec::with_capacity(bytes.len());
+                for &w in bytes {
+                    out.push(u8::try_from(w).map_err(|_| bad())?);
+                }
+                String::from_utf8(out)
+                    .map(String::into_boxed_str)
+                    .map_err(|_| bad())
+            };
+            let text = string(&mut at)?;
+            let constraints = string(&mut at)?;
+            if at != ops.len() {
+                return Err(bad());
+            }
+            if !text.is_empty() || !constraints.is_empty() {
+                return Err(s.unsupported(Feature::Constant { code }));
+            }
+            ready(Const::InlineAsm {
+                text,
+                constraints,
+                flags,
+            })
+        }
         CST_STRING | CST_CSTRING | CST_DATA => {
             let elem = match types.get(ty) {
                 Some(Type::Array { elem, .. } | Type::Vector { elem, .. }) => *elem,

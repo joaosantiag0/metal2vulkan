@@ -338,6 +338,9 @@ impl<'a> Verifier<'a> {
             },
             Const::Float(bits) => ty.float_bits().is_some_and(|w| fits(*bits, w)),
             Const::Null | Const::Undef | Const::Poison => ty.is_sized(),
+            // An asm block's constant is the address of its assembly: a pointer, and only the
+            // empty call through it is decoded, so it need not name a function type.
+            Const::InlineAsm { .. } => matches!(ty, Type::Ptr { .. }),
             Const::Aggregate(elems) => {
                 let tys: Option<Vec<TypeId>> = elems.iter().map(|&e| child_ty(e)).collect();
                 let Some(tys) = tys else {

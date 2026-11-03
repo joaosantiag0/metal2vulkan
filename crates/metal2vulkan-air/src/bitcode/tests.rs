@@ -1037,6 +1037,105 @@ fn constant_errors_are_typed() {
 }
 
 #[test]
+fn an_empty_inline_asm_decodes_and_every_other_form_is_refused() {
+    // SETTYPE `ptr` (type 1 of `good_types`), then INLINEASM
+    // `[function type, flags, len(text), len(constraints)]`.
+    let t = constants(&[(1, vec![1]), (30, vec![4, 1, 0, 0])]).unwrap();
+    let c = t
+        .parts
+        .consts
+        .get(t.value(0).unwrap())
+        .expect("the barrier is interned");
+    assert_eq!(
+        c.value,
+        Const::InlineAsm {
+            text: "".into(),
+            constraints: "".into(),
+            flags: 1,
+        }
+    );
+    // A text or a constraint string makes it real asm, which stays outside the typed model.
+    for records in [
+        vec![(1, vec![1]), (30, vec![4, 1, 1, 0x6d, 0])],
+        vec![(1, vec![1]), (30, vec![4, 1, 0, 1, 0x72])],
+    ] {
+        let e = constants(&records).unwrap_err();
+        assert_eq!(
+            unsupported_feature(&e),
+            Some(&Feature::Constant { code: 30 })
+        );
+    }
+    // A truncated record, or one with a word past its strings, is malformed.
+    for records in [
+        vec![(1, vec![1]), (30, vec![4, 1, 0])],
+        vec![(1, vec![1]), (30, vec![4, 1, 0, 0, 9])],
+    ] {
+        let e = constants(&records).unwrap_err();
+        assert!(
+            matches!(bitcode_kind(&e), Some(BitcodeError::MalformedRecord { .. })),
+            "{records:?}: {e:?}"
+        );
+    }
+}
+
+/// AIR's empty inline asm (`asm sideeffect "", ""()`) is the optimization barrier the MSL
+/// compiler emits inside a loop: it produces no value, takes no operand and names no memory, so
+/// its call is dropped and the module translates. A real asm block is still a typed refusal.
+#[test]
+fn the_empty_inline_asm_barrier_is_dropped() {
+    const BARRIER: &str = r#"
+define void @barrier(i32 %n, ptr addrspace(1) %out) {
+entry:
+  br label %loop
+loop:
+  %i = phi i32 [ 0, %entry ], [ %next, %loop ]
+  call void asm sideeffect "", ""()
+  %next = add nuw i32 %i, 1
+  %more = icmp ult i32 %next, %n
+  br i1 %more, label %loop, label %exit
+exit:
+  store i32 %next, ptr addrspace(1) %out, align 4
+  ret void
+}
+"#;
+    const REAL: &str = r#"
+define void @real(i32 %x, ptr addrspace(1) %out) {
+entry:
+  %y = call i32 asm sideeffect "add $0, $1, $1;", "=r,r"(i32 %x)
+  store i32 %y, ptr addrspace(1) %out, align 4
+  ret void
+}
+"#;
+    let Some(tool) = llvm_as() else {
+        eprintln!("SKIP the_empty_inline_asm_barrier_is_dropped: llvm-as not found");
+        return;
+    };
+    let scratch = Scratch::new();
+    let assemble_one = |name: &str, text: &str| -> Vec<u8> {
+        let ll = scratch.0.join(format!("{name}.ll"));
+        std::fs::write(&ll, text).unwrap();
+        let bc = scratch.0.join(format!("{name}.bc"));
+        assemble(&tool, &[ll.as_os_str()], &bc).unwrap_or_else(|| panic!("llvm-as refused {name}"))
+    };
+
+    let bytes = assemble_one("barrier", BARRIER);
+    let t = decode(stream_of(&bytes)).expect("the barrier decodes");
+    let module = verify_module_level(&t).expect("the barrier verifies");
+    let text = crate::ir::print::print(&module);
+    assert!(
+        !text.contains("call "),
+        "the barrier call survived:\n{text}"
+    );
+
+    let bytes = assemble_one("real", REAL);
+    let e = decode(stream_of(&bytes)).unwrap_err();
+    assert_eq!(
+        unsupported_feature(&e),
+        Some(&Feature::Constant { code: 30 })
+    );
+}
+
+#[test]
 fn metadata_and_string_table_errors_are_typed() {
     // A node referring past the metadata.
     let e = with_body(|w| block(w, codes::METADATA_BLOCK, &[(3, vec![40])])).unwrap_err();

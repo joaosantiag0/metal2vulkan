@@ -111,6 +111,11 @@ impl Printer<'_> {
                 | Const::Poison
                 | Const::GlobalAddr(_)
                 | Const::FuncAddr(_) => {}
+                Const::InlineAsm {
+                    text, constraints, ..
+                } => {
+                    w!(self, "asm \"{}\", \"{}\"", text, constraints);
+                }
             }
             self.out.push('\n');
         }
@@ -693,7 +698,7 @@ impl Printer<'_> {
             Const::Poison => "poison".into(),
             Const::GlobalAddr(g) => format!("@g{}", g.raw()),
             Const::FuncAddr(f) => format!("@f{}", f.raw()),
-            Const::Aggregate(_) | Const::Expr(_) => return None,
+            Const::Aggregate(_) | Const::Expr(_) | Const::InlineAsm { .. } => return None,
         })
     }
 

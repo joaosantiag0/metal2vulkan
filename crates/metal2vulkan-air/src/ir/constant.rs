@@ -40,6 +40,18 @@ pub enum Const {
     GlobalAddr(GlobalId),
     /// The address of a function (typed `Ptr` in the thread space).
     FuncAddr(FuncId),
+    /// `llvm.inlineasm`: the text, the constraints, and the flags word
+    /// (`hasSideEffects | alignStack << 1 | dialect << 2 | canThrow << 3`). AIR emits the empty
+    /// form, `asm sideeffect "", ""()`, as an optimization barrier: a call through it produces
+    /// no value and touches no memory, and the decoder drops that call.
+    InlineAsm {
+        /// The asm text.
+        text: Box<str>,
+        /// The constraint string.
+        constraints: Box<str>,
+        /// The flags word.
+        flags: u8,
+    },
     /// A constant expression.
     Expr(ConstExpr),
 }
@@ -56,7 +68,8 @@ impl Const {
             | Const::Undef
             | Const::Poison
             | Const::GlobalAddr(_)
-            | Const::FuncAddr(_) => &[],
+            | Const::FuncAddr(_)
+            | Const::InlineAsm { .. } => &[],
         }
     }
 }

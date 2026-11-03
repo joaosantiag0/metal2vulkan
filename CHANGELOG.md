@@ -13,7 +13,9 @@ A full rewrite: nothing of 0.1.0's API or command line remains.
   buffers, the encoders, buffers, textures, heaps, pipeline states, events and indirect command
   buffers run on a Vulkan device through `ash`.
 - **AIR front end** (`metal2vulkan-air`): the metallib container, the bitcode reader, a typed IR,
-  AIR's metadata ABI and canonicalization, as a crate of its own.
+  AIR's metadata ABI and canonicalization, as a crate of its own. The empty inline asm AIR emits as
+  an optimization barrier (`asm sideeffect "", ""()`) decodes and its call is dropped; every other
+  asm block stays a typed refusal.
 - **Fast by default**: off Apple's GPUs, choices that trade exactness for speed take the device's
   native form, and each has an opt-in exact switch ([docs/FAST-PATHS.md](docs/FAST-PATHS.md)).
 - **Typed refusals and announced degradations**: input a device cannot run fails with an error that

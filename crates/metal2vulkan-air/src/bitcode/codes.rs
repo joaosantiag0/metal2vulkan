@@ -91,14 +91,17 @@ pub(crate) const CST_CE_INBOUNDS_GEP: u32 = 20;
 pub(crate) const CST_DATA: u32 = 22;
 pub(crate) const CST_CE_GEP_WITH_INRANGE_INDEX_OLD: u32 = 24;
 pub(crate) const CST_POISON: u32 = 26;
+/// `CST_CODE_INLINEASM`: `[function type id, flags, len(text), text…, len(constraints),
+/// constraints…]`.
+pub(crate) const CST_INLINEASM: u32 = 30;
 pub(crate) const CST_CE_GEP: u32 = 32;
 /// Constant codes LLVM defines that the typed model refuses: CE_SELECT, CE_EXTRACTELT,
 /// CE_INSERTELT, CE_SHUFFLEVEC, CE_CMP, INLINEASM_OLD, CE_SHUFVEC_EX, BLOCKADDRESS,
-/// INLINEASM_OLD2, CE_UNOP, DSO_LOCAL_EQUIVALENT, INLINEASM_OLD3, NO_CFI_VALUE, INLINEASM,
+/// INLINEASM_OLD2, CE_UNOP, DSO_LOCAL_EQUIVALENT, INLINEASM_OLD3, NO_CFI_VALUE,
 /// CE_GEP_WITH_INRANGE, PTRAUTH, PTRAUTH2, BYTE and WIDE_BYTE (LLVM 23: constants of the
-/// refused byte type).
+/// refused byte type). `CST_INLINEASM` is decoded, and only its empty form, below.
 pub(crate) const CST_UNSUPPORTED: &[u32] = &[
-    13, 14, 15, 16, 17, 18, 19, 21, 23, 25, 27, 28, 29, 30, 31, 33, 34, 35, 36,
+    13, 14, 15, 16, 17, 18, 19, 21, 23, 25, 27, 28, 29, 31, 33, 34, 35, 36,
 ];
 
 // ---- METADATA ----

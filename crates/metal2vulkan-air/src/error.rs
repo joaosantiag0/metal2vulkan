@@ -747,8 +747,9 @@ pub enum Feature {
     DynamicCall,
     /// Linkage signatures / stitching / dynamic libraries.
     Linking,
-    /// A bitcode constant record outside the typed model (block address, inline asm, `select`
-    /// and other constant expressions the IR has no form for).
+    /// A bitcode constant record outside the typed model (block address, a non-empty inline asm
+    /// block, `select` and other constant expressions the IR has no form for). The empty asm AIR
+    /// emits as an optimization barrier is decoded, and the call through it dropped.
     Constant {
         /// The constants block's record code.
         code: u32,

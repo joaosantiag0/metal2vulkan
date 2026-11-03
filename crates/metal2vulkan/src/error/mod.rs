@@ -1232,8 +1232,9 @@ pub enum Feature {
     // ---- Device ----
     /// The device's Vulkan version is below the 1.2 floor.
     VulkanVersion,
-    /// A bitcode constant record outside the typed model (block address, inline asm, `select`
-    /// and other constant expressions the IR has no form for).
+    /// A bitcode constant record outside the typed model (block address, a non-empty inline asm
+    /// block, `select` and other constant expressions the IR has no form for). The empty asm AIR
+    /// emits as an optimization barrier is decoded, and the call through it dropped.
     Constant {
         code: u32,
     },

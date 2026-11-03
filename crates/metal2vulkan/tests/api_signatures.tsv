@@ -10831,6 +10831,7 @@ variant	metal2vulkan-air::ir::Const::Expr	Expr(ConstExpr)
 variant	metal2vulkan-air::ir::Const::Float	Float(u64)
 variant	metal2vulkan-air::ir::Const::FuncAddr	FuncAddr(FuncId)
 variant	metal2vulkan-air::ir::Const::GlobalAddr	GlobalAddr(GlobalId)
+variant	metal2vulkan-air::ir::Const::InlineAsm	InlineAsm { text: Box<str>, constraints: Box<str>, flags: u8 }
 variant	metal2vulkan-air::ir::Const::Int	Int(u64)
 variant	metal2vulkan-air::ir::Const::Null	Null
 variant	metal2vulkan-air::ir::Const::Poison	Poison

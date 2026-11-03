@@ -1371,8 +1371,21 @@ impl FnDecoder {
             _ => return Err(bad()),
         };
         let (callee, _) = self.pair(s, cx, r, m)?;
+        // AIR's empty inline asm (`asm sideeffect "", ""()`) is an optimization barrier: no
+        // value, no operands, no clobbers, no memory. A call through it is dropped, as the call
+        // produces nothing (the decoder refuses every other asm form when it reads the record).
+        let empty_asm = matches!(
+            callee,
+            Value::Const(c)
+                if matches!(
+                    cx.consts.get(c).map(|k| &k.value),
+                    Some(Const::InlineAsm { text, constraints, .. })
+                        if text.is_empty() && constraints.is_empty()
+                )
+        );
         let target = self.callee(cx, callee, fn_ty);
-        let dropped = matches!(target, Target::Intrinsic(_, DeclClass::Drop(_)));
+        let dropped = matches!(target, Target::Intrinsic(_, DeclClass::Drop(_)))
+            || (empty_asm && params.is_empty() && matches!(cx.types.get(ret), Some(Type::Void)));
         let mut args = Vec::new();
         m.reserve(&mut args, params.len())?;
         for &p in params.iter() {
